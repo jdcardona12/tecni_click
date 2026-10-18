@@ -17,4 +17,8 @@ app.use('/api/calificaciones', calificacionRouter);
 
 const pagorouter = require('./routers/pago.routers');
 app.use('/api/pagos', pagorouter);
+
+const usuarioRouter = require('./routers/usuario.routers');
+app.use('/api/usuarios', usuarioRouter);
+
 module.exports = app;
