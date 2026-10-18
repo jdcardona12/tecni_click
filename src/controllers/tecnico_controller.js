@@ -47,4 +47,49 @@ const create = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, create };
+const update = async (req, res) => {
+  try {
+    const { nombre, telefono, email, especialidad } = req.body;
+
+    if (!nombre || !email) {
+      return res.status(400).json({ ok: false, msg: 'Faltan datos: nombre o email' });
+    }
+
+    const actualizado = await tecnicoModel.update(req.params.id, { nombre, telefono, email, especialidad });
+    if (!actualizado) {
+      return res.status(404).json({ ok: false, msg: 'Técnico no encontrado' });
+    }
+
+    res.json({ ok: true, msg: 'Técnico actualizado' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ ok: false, msg: 'Error en el servidor' });
+  }
+};
+
+const remove = async (req, res) => {
+  try {
+    const eliminado = await tecnicoModel.remove(req.params.id);
+    if (!eliminado) {
+      return res.status(404).json({ ok: false, msg: 'Técnico no encontrado' });
+    }
+    res.json({ ok: true, msg: 'Técnico eliminado' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ ok: false, msg: 'Error en el servidor' });
+  }
+};
+
+const actual = async (req, res) => {
+  try {
+    const tecnico = await tecnicoModel.findById(req.usuario.id);
+    if (!tecnico) {
+      return res.status(404).json({ ok: false, msg: 'Técnico no encontrado' });
+    }
+    res.json({ ok: true, data: tecnico });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ ok: false, msg: 'Error en el servidor' });
+  }
+};
+module.exports = { getAll, getById, create, update, remove, actual };
