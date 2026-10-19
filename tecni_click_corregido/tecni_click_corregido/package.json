@@ -1,0 +1,36 @@
+{
+  "name": "tecni_click",
+  "version": "1.0.0",
+  "description": "API REST de Tecni-Click para servicios técnicos de electrodomésticos",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "check": "node --check index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdcardona12/tecni_click.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jdcardona12/tecni_click/issues"
+  },
+  "homepage": "https://github.com/jdcardona12/tecni_click#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.1",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.12.1",
+    "mysql2": "^3.24.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
