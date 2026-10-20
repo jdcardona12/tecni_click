@@ -23,4 +23,17 @@ const create = async ({ nombre, telefono, email, especialidad, password }) => {
   return { id: result.insertId, nombre, email, especialidad };
 };
 
-module.exports = { findAll, findById, findByEmail, create };
+const update = async (id, { nombre, telefono, email, especialidad }) => {
+  const [result] = await pool.query(
+    'UPDATE tecnicos SET nombre = ?, telefono = ?, email = ?, especialidad = ? WHERE id = ?',
+    [nombre, telefono, email, especialidad, id]
+  );
+  return result.affectedRows > 0;
+};
+
+const remove = async (id) => {
+  const [result] = await pool.query('DELETE FROM tecnicos WHERE id = ?', [id]);
+  return result.affectedRows > 0;
+};
+
+module.exports = { findAll, findById, findByEmail, create, update, remove };
