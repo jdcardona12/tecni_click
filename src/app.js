@@ -1,7 +1,10 @@
 const express = require('express');
 const app = express();
 
-app.use(express.json());
+app.use(cors({
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 const authRouter = require('./routers/auth.routers');
 app.use('/api/auth', authRouter);
