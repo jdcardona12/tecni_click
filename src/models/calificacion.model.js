@@ -15,7 +15,7 @@ const findById = async (id) => {
 
 const findBySolicitud = async (solicitud_id) => {
   const [rows] = await pool.query('SELECT * FROM calificaciones WHERE solicitud_id = ?', [solicitud_id]);
-  return rows[0];x
+  return rows[0];
 };
 
 const findByTecnico = async (tecnico_id) => {

@@ -1,12 +1,11 @@
 const router = require('express').Router();
-const { verificarToken } = require('../config/auto_midelware');
+const { verificarToken, permitirRoles } = require('../config/auto_midelware');
 const ctrl = require('../controllers/tecnico_controller');
 
-router.get('/actual', verificarToken, ctrl.actual);
 router.get('/', ctrl.getAll);
+router.get('/actual', verificarToken, permitirRoles('tecnico'), ctrl.actual);
 router.get('/:id', ctrl.getById);
-router.post('/', ctrl.create);
-router.put('/:id', verificarToken, ctrl.update);
-router.delete('/:id', verificarToken, ctrl.remove);
-
+router.post('/', verificarToken, permitirRoles('admin'), ctrl.create);
+router.put('/:id', verificarToken, permitirRoles('admin', 'tecnico'), ctrl.update);
+router.delete('/:id', verificarToken, permitirRoles('admin'), ctrl.remove);
 module.exports = router;

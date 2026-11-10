@@ -1,10 +1,13 @@
-const express = require('express');
-const router = express.Router();
+const router = require('express').Router();
+const { verificarToken, permitirRoles } = require('../config/auto_midelware');
 const ctrl = require('../controllers/solicitud_controller');
 
-router.post('/', ctrl.create);
-router.get('/:id', ctrl.getById);
+router.use(verificarToken);
+router.get('/disponibles', permitirRoles('tecnico', 'admin'), ctrl.getDisponibles);
+router.get('/tecnico/:id', permitirRoles('tecnico', 'admin'), ctrl.getByTecnico);
 router.get('/usuario/:id', ctrl.getByUsuario);
-router.put('/:id', ctrl.updateEstado);
-
+router.get('/:id', ctrl.getById);
+router.post('/', permitirRoles('cliente', 'admin'), ctrl.create);
+router.put('/:id/aceptar', permitirRoles('tecnico'), ctrl.aceptar);
+router.put('/:id/estado', permitirRoles('tecnico', 'admin'), ctrl.updateEstado);
 module.exports = router;

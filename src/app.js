@@ -1,24 +1,36 @@
+const path = require('path');
 const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+
 const app = express();
+app.disable('x-powered-by');
+app.use(cors());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true }));
+if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 
-app.use(express.json());
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
-const authRouter = require('./routers/auth.routers');
-app.use('/api/auth', authRouter);
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, msg: 'API Tecni-Click funcionando' });
+});
 
-const tecnicoRouter = require('./routers/tecnico.routers');
-app.use('/api/tecnicos', tecnicoRouter);
+app.use('/api/auth', require('./routers/auth.routers'));
+app.use('/api/usuarios', require('./routers/usuario.routers'));
+app.use('/api/tecnicos', require('./routers/tecnico.routers'));
+app.use('/api/solicitudes', require('./routers/solicitud.routers'));
+app.use('/api/calificaciones', require('./routers/calificacion.routers'));
+app.use('/api/pagos', require('./routers/pago.routers'));
 
-const solicitudRouter = require('./routers/solicitud.routers');
-app.use('/api/solicitudes', solicitudRouter);
+app.use('/api', (req, res) => res.status(404).json({ ok: false, msg: 'Endpoint no encontrado.' }));
 
-const calificacionRouter = require('./routers/calificacion.routers');
-app.use('/api/calificaciones', calificacionRouter);
-
-const pagorouter = require('./routers/pago.routers');
-app.use('/api/pagos', pagorouter);
-
-const usuarioRouter = require('./routers/usuario.routers');
-app.use('/api/usuarios', usuarioRouter);
+app.use((error, req, res, next) => {
+  console.error(error);
+  if (error.type === 'entity.parse.failed') {
+    return res.status(400).json({ ok: false, msg: 'El cuerpo JSON no es válido.' });
+  }
+  return res.status(500).json({ ok: false, msg: 'Error interno del servidor.' });
+});
 
 module.exports = app;
