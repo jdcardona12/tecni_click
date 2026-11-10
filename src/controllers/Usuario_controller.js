@@ -2,8 +2,8 @@ const usuarioModel = require('../models/usuario.model');
 
 // Solo el dueño de la cuenta o un admin pueden modificarla o eliminarla
 const puedeModificar = (req) =>
-  req.usuario.rol !== 'tecnico' &&
-  (req.usuario.id == req.params.id || req.usuario.rol === 'admin');
+  req.usuario.rol === 'admin' ||
+  (req.usuario.rol !== 'tecnico' && String(req.usuario.id) === String(req.params.id));
 
 const getAll = async (req, res) => {
   try {
@@ -17,6 +17,9 @@ const getAll = async (req, res) => {
 
 const getById = async (req, res) => {
   try {
+    if (req.usuario.rol !== 'admin' && String(req.usuario.id) !== String(req.params.id)) {
+      return res.status(403).json({ ok: false, msg: 'No autorizado para consultar ese usuario.' });
+    }
     const usuario = await usuarioModel.findById(req.params.id);
     if (!usuario) {
       return res.status(404).json({ ok: false, msg: 'Usuario no encontrado' });

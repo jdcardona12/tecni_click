@@ -49,12 +49,19 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   try {
+    if (req.usuario.rol !== 'admin' && String(req.usuario.id) !== String(req.params.id)) {
+      return res.status(403).json({ ok: false, msg: 'No autorizado para modificar este técnico.' });
+    }
     const { nombre, telefono, email, especialidad } = req.body;
 
     if (!nombre || !email) {
       return res.status(400).json({ ok: false, msg: 'Faltan datos: nombre o email' });
     }
 
+    const existente = await tecnicoModel.findByEmail(email);
+    if (existente && String(existente.id) !== String(req.params.id)) {
+      return res.status(409).json({ ok: false, msg: 'Ese correo ya está registrado por otro técnico.' });
+    }
     const actualizado = await tecnicoModel.update(req.params.id, { nombre, telefono, email, especialidad });
     if (!actualizado) {
       return res.status(404).json({ ok: false, msg: 'Técnico no encontrado' });

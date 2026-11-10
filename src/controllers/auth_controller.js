@@ -3,102 +3,102 @@ const jwt = require('jsonwebtoken');
 const usuarioModel = require('../models/usuario.model');
 const tecnicoModel = require('../models/tecnico.model');
 
-const generarToken = (payload) =>
-  jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+const generarToken = (payload) => {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET debe configurarse en .env con al menos 32 caracteres.');
+  }
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '8h' });
+};
 
 const register = async (req, res) => {
   try {
-    const { nombre, telefono, email, password } = req.body;
+    let { nombre, telefono, email, password } = req.body;
+    nombre = typeof nombre === 'string' ? nombre.trim() : '';
+    email = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    telefono = telefono ? String(telefono).trim() : null;
 
-    if (!nombre || !email || !password) {
-      return res.status(400).json({ ok: false, msg: 'Faltan datos: nombre, email o password' });
+    if (!nombre || !email || !password) return res.status(400).json({ ok: false, msg: 'Nombre, email y contraseña son obligatorios.' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, msg: 'El correo no tiene un formato válido.' });
+    if (typeof password !== 'string' || password.length < 8) return res.status(400).json({ ok: false, msg: 'La contraseña debe tener al menos 8 caracteres.' });
+
+    if (await usuarioModel.findByEmail(email) || await tecnicoModel.findByEmail(email)) {
+      return res.status(409).json({ ok: false, msg: 'Ese correo ya está registrado.' });
     }
 
-    const existente = await usuarioModel.findByEmail(email);
-    if (existente) {
-      return res.status(409).json({ ok: false, msg: 'Ese email ya está registrado' });
-    }
-
-    const hash = await bcrypt.hash(password, 10);
-    const nuevoUsuario = await usuarioModel.create({ nombre, telefono, email, password: hash });
-
-    res.status(201).json({ ok: true, data: nuevoUsuario });
+    const hash = await bcrypt.hash(password, 12);
+    const data = await usuarioModel.create({ nombre, telefono, email, password: hash });
+    const token = generarToken({ id: data.id, email, rol: 'cliente' });
+    return res.status(201).json({ ok: true, msg: 'Usuario registrado correctamente.', token, data });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ ok: false, msg: 'Error en el servidor' });
+    return res.status(500).json({ ok: false, msg: 'No fue posible registrar el usuario.' });
+  }
+};
+
+const registerTecnico = async (req, res) => {
+  try {
+    let { nombre, telefono, email, especialidad, password } = req.body;
+    nombre = typeof nombre === 'string' ? nombre.trim() : '';
+    email = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    telefono = telefono ? String(telefono).trim() : null;
+    especialidad = especialidad ? String(especialidad).trim() : null;
+
+    if (!nombre || !email || !password) return res.status(400).json({ ok: false, msg: 'Nombre, email y contraseña son obligatorios.' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, msg: 'El correo no tiene un formato válido.' });
+    if (typeof password !== 'string' || password.length < 8) return res.status(400).json({ ok: false, msg: 'La contraseña debe tener al menos 8 caracteres.' });
+
+    if (await usuarioModel.findByEmail(email) || await tecnicoModel.findByEmail(email)) {
+      return res.status(409).json({ ok: false, msg: 'Ese correo ya está registrado.' });
+    }
+
+    const hash = await bcrypt.hash(password, 12);
+    const data = await tecnicoModel.create({ nombre, telefono, email, especialidad, password: hash });
+    const token = generarToken({ id: data.id, email, rol: 'tecnico' });
+    return res.status(201).json({ ok: true, msg: 'Técnico registrado correctamente.', token, data: { ...data, rol: 'tecnico' } });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ ok: false, msg: 'No fue posible registrar el técnico.' });
   }
 };
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ ok: false, msg: 'Faltan datos: email o password' });
-    }
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const { password } = req.body;
+    if (!email || !password) return res.status(400).json({ ok: false, msg: 'Email y contraseña son obligatorios.' });
 
     const usuario = await usuarioModel.findByEmail(email);
-    if (!usuario) {
-      return res.status(404).json({ ok: false, msg: 'Usuario no encontrado' });
+    if (!usuario || !(await bcrypt.compare(password, usuario.password))) {
+      return res.status(401).json({ ok: false, msg: 'Credenciales incorrectas.' });
     }
+    if (Number(usuario.activo) === 0) return res.status(403).json({ ok: false, msg: 'La cuenta está desactivada.' });
 
-    const passwordValida = await bcrypt.compare(password, usuario.password);
-    if (!passwordValida) {
-      return res.status(401).json({ ok: false, msg: 'Contraseña incorrecta' });
-    }
-
-    const token = generarToken({
-      id: usuario.id,
-      email: usuario.email,
-      rol: usuario.tipo_usuario
-    });
-
-    res.json({
-      ok: true,
-      msg: 'Login exitoso',
-      token,
-      data: { id: usuario.id, nombre: usuario.nombre, email: usuario.email }
-    });
+    const token = generarToken({ id: usuario.id, email: usuario.email, rol: usuario.tipo_usuario || 'cliente' });
+    return res.json({ ok: true, msg: 'Inicio de sesión exitoso.', token, data: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.tipo_usuario || 'cliente' } });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ ok: false, msg: 'Error en el servidor' });
+    return res.status(500).json({ ok: false, msg: 'No fue posible iniciar sesión.' });
   }
 };
 
 const loginTecnico = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ ok: false, msg: 'Faltan datos: email o password' });
-    }
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const { password } = req.body;
+    if (!email || !password) return res.status(400).json({ ok: false, msg: 'Email y contraseña son obligatorios.' });
 
     const tecnico = await tecnicoModel.findByEmail(email);
-    if (!tecnico) {
-      return res.status(404).json({ ok: false, msg: 'Técnico no encontrado' });
+    if (!tecnico || !(await bcrypt.compare(password, tecnico.password))) {
+      return res.status(401).json({ ok: false, msg: 'Credenciales incorrectas.' });
     }
+    if (Number(tecnico.activo) === 0) return res.status(403).json({ ok: false, msg: 'La cuenta está desactivada.' });
 
-    const passwordValida = await bcrypt.compare(password, tecnico.password);
-    if (!passwordValida) {
-      return res.status(401).json({ ok: false, msg: 'Contraseña incorrecta' });
-    }
-
-    const token = generarToken({
-      id: tecnico.id,
-      email: tecnico.email,
-      rol: 'tecnico'
-    });
-
-    res.json({
-      ok: true,
-      msg: 'Login exitoso',
-      token,
-      data: { id: tecnico.id, nombre: tecnico.nombre, email: tecnico.email }
-    });
+    const token = generarToken({ id: tecnico.id, email: tecnico.email, rol: 'tecnico' });
+    return res.json({ ok: true, msg: 'Inicio de sesión exitoso.', token, data: { id: tecnico.id, nombre: tecnico.nombre, email: tecnico.email, rol: 'tecnico' } });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ ok: false, msg: 'Error en el servidor' });
+    return res.status(500).json({ ok: false, msg: 'No fue posible iniciar sesión.' });
   }
 };
 
-module.exports = { register, login, loginTecnico };
+module.exports = { register, registerTecnico, login, loginTecnico };
